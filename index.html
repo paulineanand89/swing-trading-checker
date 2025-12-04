@@ -84,7 +84,7 @@
       }
 
       const candles = raw.map(d => ({
-        t: new Date(d[0]),
+        x: new Date(d[0]), // Chart.js financial expects x
         o: d[1],
         h: d[2],
         l: d[3],
@@ -153,7 +153,7 @@
         data: {
           datasets: [
             { label: 'Candles', data: candles },
-            { label: 'AVWAP', type: 'line', data: candles.map((c,i)=>({x:c.t,y:avwap[i]})), borderColor:'blue', fill:false }
+            { label: 'AVWAP', type: 'line', data: candles.map((c,i)=>({x:c.x,y:avwap[i]})), borderColor:'blue', fill:false }
           ]
         }
       });
@@ -164,7 +164,7 @@
       window.rocChartObj = new Chart(ctx2, {
         type: 'line',
         data: {
-          labels: candles.map(c=>c.t),
+          labels: candles.map(c=>c.x),
           datasets: [
             { label: 'RoC(10d)', data: roc, borderColor:'orange', fill:false },
             { label: 'Zero', data: roc.map(()=>0), borderColor:'gray', borderDash:[5,5], fill:false }
