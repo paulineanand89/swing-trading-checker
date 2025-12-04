@@ -93,7 +93,7 @@
         statusEl.textContent = "Loaded successfully.";
       } catch (err) {
         console.error("Error loading coins:", err);
-        statusEl.textContent = "Failed to load coins. Check your network or API availability.";
+        statusEl.textContent = "Failed to load coins. CoinGecko is free and doesn’t require an API key, but some browsers block fetch() when opened via file://. Try opening via http:// instead.";
       }
     }
 
@@ -105,27 +105,21 @@
         const data = await res.json();
         return Array.isArray(data) ? data : [];
       };
-      try {
-        let data = await tryFetch("inr");
-        if (!data || data.length === 0) {
-          data = await tryFetch("usd");
-        }
-        return data;
-      } catch (e) {
-        return [];
+      let data = await tryFetch("inr");
+      if (!data || data.length === 0) {
+        data = await tryFetch("usd");
       }
+      return data;
     }
 
     function computeAVWAP(closes) {
       const highestClose = Math.max(...closes);
       const anchorIndex = closes.lastIndexOf(highestClose);
-      const avwap = [];
-      for (let i=0; i<closes.length; i++) {
-        if (i < anchorIndex) { avwap.push(null); continue; }
+      return closes.map((c,i) => {
+        if (i < anchorIndex) return null;
         const slice = closes.slice(anchorIndex, i+1);
-        avwap.push(slice.reduce((s,x)=>s+x,0)/slice.length);
-      }
-      return avwap;
+        return slice.reduce((s,x)=>s+x,0)/slice.length;
+      });
     }
 
     function computeRoC(closes, period=10) {
@@ -158,35 +152,28 @@
       const lows   = raw.map(d => d[3]);
       const latest = closes[closes.length-1];
 
-      const rocPeriod = 10;
-      const roc = computeRoC(closes, rocPeriod);
+      const roc = computeRoC(closes, 10);
       const latestRoc = roc[roc.length-1];
-
       const avwap = computeAVWAP(closes);
       const latestAvwap = avwap[avwap.length-1];
 
-      const hasRoc = latestRoc !== null && !isNaN(latestRoc);
-      const hasAvwap = latestAvwap !== null && !isNaN(latestAvwap);
-      const pass = hasRoc && hasAvwap ? (latestRoc < 0 && latest > latestAvwap) : false;
+      const pass = latestRoc < 0 && latest > latestAvwap;
 
       const sl = Math.min(...lows);
       const riskPts = latest - sl;
       const target = latest + 2*riskPts;
       const positionSize = riskPts > 0 ? (capital*riskPct)/riskPts : 0;
 
-      let explanation = "";
-      if (pass) {
-        explanation = `
-          <b>Explanation:</b><br>
-          - RoC(10d) was negative, showing momentum reset.<br>
-          - Price closed above AVWAP, confirming trend resumption.<br>
-          - These conditions often align with <b>institutional buy setups</b>.<br>
-        `;
-      } else {
-        explanation = `
-          <b>Explanation:</b><br>
-          - Either RoC(10d) was positive (no reset), or price failed to close above AVWAP.<br>
-          - Without both, conditions do not align with institutional buy setups.<br>
-        `;
-      }
-
+      statusEl.textContent = "";
+      resultEl.innerHTML = `
+        <b>Ticker:</b> ${ticker.toUpperCase()}<br>
+        <b>Latest Close:</b> ₹${latest.toFixed(4)}<br>
+        <b>RoC(10d):</b> ${(latestRoc*100).toFixed(2)}%<br>
+        <b>AVWAP:</b> ₹${latestAvwap.toFixed(4)}<br>
+        <b>Signal:</b> ${pass ? "PASS ✅" : "FAIL ❌"}<br><br>
+        ${pass ? `
+          <b>Entry:</b> ₹${latest.toFixed(4)}<br>
+          <b>Stop Loss:</b> ₹${sl.toFixed(4)}<br>
+          <b>Target:</b> ₹${target.toFixed(4)}<br>
+          <b>Position Size:</b> ${positionSize.toFixed(2)} units<br>
+        ` : ""}
