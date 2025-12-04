@@ -8,7 +8,9 @@
     h1 { text-align: center; }
     .panel { border: 1px solid #ccc; padding: 15px; margin-top: 20px; }
     label { display:block; margin-top:10px; }
-    #about { background:#f9f9f9; border:1px solid #ddd; padding:15px; margin-bottom:20px; }
+    #about, #glossary, #walkthrough, #disclaimer {
+      background:#f9f9f9; border:1px solid #ddd; padding:15px; margin-bottom:20px;
+    }
   </style>
 </head>
 <body>
@@ -28,6 +30,34 @@
     2. Latest Close > AVWAP → trend resumption.<br>
     3. Both together → PASS ✅ (potential institutional buy setup).<br>
     4. If either fails → FAIL ❌ (no setup).<br>
+  </div>
+
+  <!-- Glossary panel -->
+  <div id="glossary">
+    <b>Glossary:</b><br>
+    • <b>RoC (Rate of Change)</b> → Measures momentum by comparing today’s price to price N days ago.<br>
+    • <b>AVWAP (Anchored VWAP)</b> → Average price since a key swing high, used by institutions to gauge fair value.<br>
+    • <b>Stop Loss</b> → Price level where you exit to limit losses.<br>
+    • <b>Target</b> → Price level where you take profit, usually set at 2× risk.<br>
+    • <b>Position Size</b> → Number of units you buy, based on risk % and capital.<br>
+  </div>
+
+  <!-- Walkthrough panel -->
+  <div id="walkthrough">
+    <b>Sample Walkthrough:</b><br>
+    If you had ₹25,000 and risk 2%:<br>
+    • Risk capital = 25,000 × 0.02 = ₹500.<br>
+    • Suppose entry = ₹100 and stop loss = ₹95 → risk per unit = ₹5.<br>
+    • Position size = 500 ÷ 5 = 100 units.<br>
+    • Target = Entry + 2×Risk = 100 + 10 = ₹110.<br>
+    This shows how capital, risk %, stop loss, and target combine into a disciplined trade plan.<br>
+  </div>
+
+  <!-- Disclaimer panel -->
+  <div id="disclaimer">
+    <b>Risk Disclaimer:</b><br>
+    This tool is for <b>educational purposes only</b>. It explains trading logic and risk management concepts.<br>
+    It is <b>not financial advice</b>. Trading involves risk, and you should consult a qualified advisor before making investment decisions.<br>
   </div>
 
   <label>Select Crypto:</label>
@@ -148,15 +178,4 @@
         ${pass ? `
           <b>Entry:</b> ₹${latest}<br>
           <b>Stop Loss:</b> ₹${sl}<br>
-          <b>Target:</b> ₹${target}<br>
-          <b>Position Size:</b> ${positionSize.toFixed(4)} units<br><br>
-        ` : ""}
-        ${explanation}
-      `;
-    }
-
-    // Load dropdown on page start
-    loadTopCoins();
-  </script>
-</body>
-</html>
+          <b>Target:</b> ₹${target
