@@ -13,9 +13,11 @@
     button { background:#2c3e50; color:#fff; cursor:pointer; margin-top:15px; }
     button:hover { background:#1a242f; }
     #result { font-size:14px; line-height:1.6; margin-top:15px; }
-    .section-title { font-size:18px; margin-bottom:10px; color:#2c3e50; }
+    .section-title { font-size:18px; margin-bottom:10px; color:#2c3e50; font-weight:bold; }
     .row { display:flex; gap:10px; align-items:center; margin-top:8px; }
     .status { font-size:12px; color:#666; margin-top:8px; min-height:16px; }
+    .error { color:#b00020; }
+    .ok { color:#2e7d32; }
   </style>
 </head>
 <body>
@@ -40,8 +42,10 @@
       </div>
 
       <div id="disclaimer">
-        <div class="section-title">Risk disclaimer</div>
-        This tool is for <b>educational purposes only</b>. It explains trading logic and risk management concepts.<br>
+        <div class="section-title">Risk Disclaimer</div>
+        <br>
+        <b>This tool is for educational purposes only.</b><br>
+        It explains trading logic and risk management concepts.<br>
         It is <b>not financial advice</b>. Trading involves risk, and you should consult a qualified advisor before making investment decisions.<br>
       </div>
     </div>
@@ -49,10 +53,31 @@
     <!-- Right column: Inputs and Results -->
     <div class="card">
       <div class="section-title">Check a signal</div>
+
       <label>Select crypto:</label>
       <select id="ticker">
-        <!-- Kaspa always present and preselected -->
+        <!-- Static curated list + Kaspa -->
         <option value="kaspa" selected>KAS - Kaspa</option>
+        <option value="bitcoin">BTC - Bitcoin</option>
+        <option value="ethereum">ETH - Ethereum</option>
+        <option value="tether">USDT - Tether</option>
+        <option value="binancecoin">BNB - BNB</option>
+        <option value="ripple">XRP - Ripple</option>
+        <option value="cardano">ADA - Cardano</option>
+        <option value="dogecoin">DOGE - Dogecoin</option>
+        <option value="solana">SOL - Solana</option>
+        <option value="tron">TRX - Tron</option>
+        <option value="polkadot">DOT - Polkadot</option>
+        <option value="matic-network">MATIC - Polygon</option>
+        <option value="litecoin">LTC - Litecoin</option>
+        <option value="uniswap">UNI - Uniswap</option>
+        <option value="chainlink">LINK - Chainlink</option>
+        <option value="near">NEAR - NEAR</option>
+        <option value="aptos">APT - Aptos</option>
+        <option value="render-token">RNDR - Render</option>
+        <option value="pepe">PEPE - Pepe</option>
+        <option value="arbitrum">ARB - Arbitrum</option>
+        <!-- Add/remove as needed -->
       </select>
 
       <div class="row">
@@ -65,11 +90,6 @@
         <input id="risk" type="number" value="2" style="flex:1">
       </div>
 
-      <div class="row">
-        <input type="checkbox" id="useDemo" checked>
-        <label for="useDemo" style="font-weight:normal">If API fails, use demo data</label>
-      </div>
-
       <button id="checkBtn">Check</button>
 
       <div id="status" class="status"></div>
@@ -78,7 +98,8 @@
   </div>
 
   <script>
-    async function fetchWithTimeout(url, ms = 6000) {
+    // Timeout wrapper for fetch
+    async function fetchWithTimeout(url, ms = 7000) {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), ms);
       try {
@@ -91,50 +112,7 @@
       }
     }
 
-    async function loadTopCoins() {
-      const dropdown = document.getElementById("ticker");
-      const seen = new Set([dropdown.value]);
-      const statusEl = document.getElementById("status");
-
-      try {
-        statusEl.textContent = "Loading top coins…";
-        const url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=inr&order=market_cap_desc&per_page=50&page=1";
-        const res = await fetchWithTimeout(url, 7000);
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const coins = await res.json();
-
-        coins.forEach(c => {
-          if (!seen.has(c.id)) {
-            const opt = document.createElement("option");
-            opt.value = c.id;
-            opt.textContent = c.symbol.toUpperCase() + " - " + c.name;
-            dropdown.appendChild(opt);
-            seen.add(c.id);
-          }
-        });
-        statusEl.textContent = "";
-      } catch (err) {
-        console.warn("Top 50 load failed:", err);
-        const fallback = [
-          {id:"bitcoin", symbol:"BTC", name:"Bitcoin"},
-          {id:"ethereum", symbol:"ETH", name:"Ethereum"},
-          {id:"tether", symbol:"USDT", name:"Tether"},
-          {id:"binancecoin", symbol:"BNB", name:"BNB"},
-          {id:"ripple", symbol:"XRP", name:"XRP"}
-        ];
-        fallback.forEach(c => {
-          if (!seen.has(c.id)) {
-            const opt = document.createElement("option");
-            opt.value = c.id;
-            opt.textContent = c.symbol + " - " + c.name;
-            dropdown.appendChild(opt);
-            seen.add(c.id);
-          }
-        });
-        statusEl.textContent = "Loaded fallback list (API unavailable).";
-      }
-    }
-
+    // OHLC fetch with INR→USD fallback
     async function fetchOhlcReliable(ticker) {
       const tryFetch = async (currency) => {
         const url = `https://api.coingecko.com/api/v3/coins/${ticker}/ohlc?vs_currency=${currency}&days=30`;
@@ -154,22 +132,7 @@
       }
     }
 
-    function demoOhlc(base = 100, n = 30) {
-      const arr = [];
-      let price = base;
-      for (let i = 0; i < n; i++) {
-        const ts = Date.now() - (n - i) * 24 * 60 * 60 * 1000;
-        const change = (Math.sin(i/5) * 0.5 + (Math.random()-0.5) * 0.8);
-        const o = price;
-        const c = Math.max(1, price + change);
-        const h = Math.max(o, c) + Math.abs(change)*0.6;
-        const l = Math.min(o, c) - Math.abs(change)*0.6;
-        arr.push([ts, o, h, l, c]);
-        price = c;
-      }
-      return arr;
-    }
-
+    // AVWAP from anchor at highest close
     function computeAVWAP(closes) {
       const highestClose = Math.max(...closes);
       const anchorIndex = closes.lastIndexOf(highestClose);
@@ -182,5 +145,108 @@
       return avwap;
     }
 
+    // RoC
     function computeRoC(closes, period=10) {
-      return closes.map((c,i) => i<period
+      return closes.map((c,i) => i<period ? null : (c - closes[i-period])/closes[i-period]);
+    }
+
+    async function checkSignal() {
+      const statusEl = document.getElementById("status");
+      const resultEl = document.getElementById("result");
+      statusEl.textContent = "Calculating…";
+      resultEl.innerHTML = "";
+
+      const ticker = document.getElementById("ticker").value;
+      const capital = parseFloat(document.getElementById("capital").value);
+      const riskPct = parseFloat(document.getElementById("risk").value)/100;
+
+      // Basic validation
+      if (!ticker) {
+        statusEl.textContent = "";
+        resultEl.innerHTML = '<span class="error">Please select a coin.</span>';
+        return;
+      }
+      if (isNaN(capital) || capital <= 0 || isNaN(riskPct) || riskPct <= 0) {
+        statusEl.textContent = "";
+        resultEl.innerHTML = '<span class="error">Enter valid capital and risk % values.</span>';
+        return;
+      }
+
+      // Fetch OHLC
+      const raw = await fetchOhlcReliable(ticker);
+      if (!raw || raw.length === 0) {
+        statusEl.textContent = "";
+        resultEl.innerHTML = `
+          <b>Ticker:</b> ${ticker.toUpperCase()}<br>
+          <b>Signal:</b> FAIL ❌<br><br>
+          <b>Explanation:</b><br>
+          - No OHLC data available in INR/USD for the past 30 days.<br>
+        `;
+        return;
+      }
+
+      // Compute series
+      const closes = raw.map(d => d[4]);
+      const lows   = raw.map(d => d[3]);
+      const latest = closes[closes.length-1];
+
+      const rocPeriod = 10;
+      const roc = computeRoC(closes, rocPeriod);
+      const latestRoc = roc[roc.length-1];
+
+      const avwap = computeAVWAP(closes);
+      const latestAvwap = avwap[avwap.length-1];
+
+      const hasRoc = latestRoc !== null && !isNaN(latestRoc);
+      const hasAvwap = latestAvwap !== null && !isNaN(latestAvwap);
+      const pass = hasRoc && hasAvwap ? (latestRoc < 0 && latest > latestAvwap) : false;
+
+      const sl = Math.min(...lows);
+      const riskPts = latest - sl;
+      const target = latest + 2*riskPts;
+      const positionSize = riskPts > 0 ? (capital*riskPct)/riskPts : 0;
+
+      let guardrailMsg = "";
+      if (!hasRoc) guardrailMsg += "- Not enough history to compute RoC(10).<br>";
+      if (!hasAvwap) guardrailMsg += "- AVWAP not available yet (anchor too recent).<br>";
+
+      let explanation = "";
+      if (pass) {
+        explanation = `
+          <b>Explanation:</b><br>
+          - RoC(10d) was negative, showing momentum reset.<br>
+          - Price closed above AVWAP, confirming trend resumption.<br>
+          - These conditions often align with <b>institutional buy setups</b>.<br>
+        `;
+      } else {
+        explanation = `
+          <b>Explanation:</b><br>
+          ${guardrailMsg ? guardrailMsg : "- Either RoC(10d) was positive (no reset), or price failed to close above AVWAP."}<br>
+          - Without both, conditions do not align with institutional buy setups.<br>
+        `;
+      }
+
+      statusEl.textContent = "";
+      resultEl.innerHTML = `
+        <b>Ticker:</b> ${ticker.toUpperCase()}<br>
+        <b>Latest Close:</b> ₹${Number(latest).toFixed(4)}<br>
+        <b>RoC(10d):</b> ${hasRoc ? (latestRoc*100).toFixed(2) + "%" : "N/A"}<br>
+        <b>AVWAP:</b> ${hasAvwap ? "₹" + Number(latestAvwap).toFixed(4) : "N/A"}<br>
+        <b>Signal:</b> ${pass ? "PASS ✅" : "FAIL ❌"}<br><br>
+        ${pass ? `
+          <b>Entry:</b> ₹${Number(latest).toFixed(4)}<br>
+          <b>Stop Loss:</b> ₹${Number(sl).toFixed(4)}<br>
+          <b>Target:</b> ₹${Number(target).toFixed(4)}<br>
+          <b>Position Size:</b> ${positionSize > 0 ? Number(positionSize).toFixed(4) + " units" : "N/A"}<br><br>
+        ` : ""}
+        ${explanation}
+      `;
+    }
+
+    // Wire up events
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("checkBtn").addEventListener("click", checkSignal);
+    });
+  </script>
+</body>
+</html>
