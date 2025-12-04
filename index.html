@@ -4,77 +4,79 @@
   <meta charset="utf-8">
   <title>Swing Trading Signal Checker</title>
   <style>
-    body { font-family: Arial; margin: 20px; }
-    h1 { text-align: center; }
-    .panel { border: 1px solid #ccc; padding: 15px; margin-top: 20px; }
-    label { display:block; margin-top:10px; }
-    #about, #glossary, #walkthrough, #disclaimer {
-      background:#f9f9f9; border:1px solid #ddd; padding:15px; margin-bottom:20px;
-    }
+    body { font-family: Arial, sans-serif; margin: 0; background:#f4f6f9; }
+    h1 { text-align: center; padding:20px; background:#2c3e50; color:#fff; margin:0; }
+    .container { display: flex; flex-wrap: wrap; padding:20px; }
+    .card { background:#fff; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); padding:20px; margin:10px; flex:1; min-width:300px; }
+    label { display:block; margin-top:10px; font-weight:bold; }
+    input, select, button { width:100%; padding:8px; margin-top:5px; border:1px solid #ccc; border-radius:4px; }
+    button { background:#2c3e50; color:#fff; cursor:pointer; margin-top:15px; }
+    button:hover { background:#1a242f; }
+    #result { font-size:14px; line-height:1.6; }
+    #about, #glossary, #walkthrough, #disclaimer { margin-bottom:20px; }
+    .section-title { font-size:18px; margin-bottom:10px; color:#2c3e50; }
   </style>
 </head>
 <body>
   <h1>Swing Trading Strategy Checker</h1>
 
-  <!-- About panel -->
-  <div id="about">
-    <b>About This Strategy:</b><br>
-    This tool identifies <b>institutional-style buy setups</b by combining momentum reset and trend resumption.<br><br>
-    <b>Key Concepts:</b><br>
-    • <b>Institutional Buy Zone</b> → price resets but holds above fair value.<br>
-    • <b>Momentum Reset (RoC negative)</b> → short-term weakness that shakes out retail traders.<br>
-    • <b>Trend Resumption (Close > AVWAP)</b> → price reclaiming anchored VWAP, often used by institutions.<br>
-    • <b>Risk Management</b> → entry, stop loss, target, and position sizing ensure discipline.<br><br>
-    <b>Conditions:</b><br>
-    1. RoC(10d) < 0 → momentum reset.<br>
-    2. Latest Close > AVWAP → trend resumption.<br>
-    3. Both together → PASS ✅ (potential institutional buy setup).<br>
-    4. If either fails → FAIL ❌ (no setup).<br>
+  <div class="container">
+    <!-- Left column: Info panels -->
+    <div class="card">
+      <div id="about">
+        <div class="section-title">About This Strategy</div>
+        This tool identifies <b>institutional-style buy setups</b by combining momentum reset and trend resumption.<br><br>
+        <b>Key Concepts:</b><br>
+        • <b>Institutional Buy Zone</b> → price resets but holds above fair value.<br>
+        • <b>Momentum Reset (RoC negative)</b> → short-term weakness that shakes out retail traders.<br>
+        • <b>Trend Resumption (Close > AVWAP)</b> → price reclaiming anchored VWAP, often used by institutions.<br>
+        • <b>Risk Management</b> → entry, stop loss, target, and position sizing ensure discipline.<br>
+      </div>
+
+      <div id="glossary">
+        <div class="section-title">Glossary</div>
+        • <b>RoC (Rate of Change)</b> → Measures momentum by comparing today’s price to price N days ago.<br>
+        • <b>AVWAP (Anchored VWAP)</b> → Average price since a key swing high.<br>
+        • <b>Stop Loss</b> → Price level where you exit to limit losses.<br>
+        • <b>Target</b> → Price level where you take profit, usually set at 2× risk.<br>
+        • <b>Position Size</b> → Number of units you buy, based on risk % and capital.<br>
+      </div>
+
+      <div id="walkthrough">
+        <div class="section-title">Sample Walkthrough</div>
+        If you had ₹25,000 and risk 2%:<br>
+        • Risk capital = 25,000 × 0.02 = ₹500.<br>
+        • Suppose entry = ₹100 and stop loss = ₹95 → risk per unit = ₹5.<br>
+        • Position size = 500 ÷ 5 = 100 units.<br>
+        • Target = Entry + 2×Risk = 100 + 10 = ₹110.<br>
+      </div>
+
+      <div id="disclaimer">
+        <div class="section-title">Risk Disclaimer</div>
+        This tool is for <b>educational purposes only</b>. It explains trading logic and risk management concepts.<br>
+        It is <b>not financial advice</b>. Trading involves risk, and you should consult a qualified advisor before making investment decisions.<br>
+      </div>
+    </div>
+
+    <!-- Right column: Inputs and Results -->
+    <div class="card">
+      <div class="section-title">Check a Signal</div>
+      <label>Select Crypto:</label>
+      <select id="ticker">
+        <option value="kaspa">KAS - Kaspa</option>
+      </select>
+
+      <label>Capital (₹):</label>
+      <input id="capital" type="number" value="25000">
+
+      <label>Risk %:</label>
+      <input id="risk" type="number" value="2">
+
+      <button onclick="checkSignal()">Check</button>
+
+      <div id="result" class="panel"></div>
+    </div>
   </div>
-
-  <!-- Glossary panel -->
-  <div id="glossary">
-    <b>Glossary:</b><br>
-    • <b>RoC (Rate of Change)</b> → Measures momentum by comparing today’s price to price N days ago.<br>
-    • <b>AVWAP (Anchored VWAP)</b> → Average price since a key swing high, used by institutions to gauge fair value.<br>
-    • <b>Stop Loss</b> → Price level where you exit to limit losses.<br>
-    • <b>Target</b> → Price level where you take profit, usually set at 2× risk.<br>
-    • <b>Position Size</b> → Number of units you buy, based on risk % and capital.<br>
-  </div>
-
-  <!-- Walkthrough panel -->
-  <div id="walkthrough">
-    <b>Sample Walkthrough:</b><br>
-    If you had ₹25,000 and risk 2%:<br>
-    • Risk capital = 25,000 × 0.02 = ₹500.<br>
-    • Suppose entry = ₹100 and stop loss = ₹95 → risk per unit = ₹5.<br>
-    • Position size = 500 ÷ 5 = 100 units.<br>
-    • Target = Entry + 2×Risk = 100 + 10 = ₹110.<br>
-    This shows how capital, risk %, stop loss, and target combine into a disciplined trade plan.<br>
-  </div>
-
-  <!-- Disclaimer panel -->
-  <div id="disclaimer">
-    <b>Risk Disclaimer:</b><br>
-    This tool is for <b>educational purposes only</b>. It explains trading logic and risk management concepts.<br>
-    It is <b>not financial advice</b>. Trading involves risk, and you should consult a qualified advisor before making investment decisions.<br>
-  </div>
-
-  <label>Select Crypto:</label>
-  <select id="ticker">
-    <!-- Explicit Kaspa option -->
-    <option value="kaspa">KAS - Kaspa</option>
-  </select>
-
-  <label>Capital (₹):</label>
-  <input id="capital" type="number" value="25000">
-
-  <label>Risk %:</label>
-  <input id="risk" type="number" value="2">
-
-  <button onclick="checkSignal()">Check</button>
-
-  <div id="result" class="panel"></div>
 
   <script>
     // Load top 50 coins dynamically and append to dropdown
@@ -156,26 +158,4 @@
       if (pass) {
         explanation = `
         <b>Explanation:</b><br>
-        - RoC(10d) was negative, showing momentum reset.<br>
-        - Price closed above AVWAP, confirming trend resumption.<br>
-        - These conditions often align with <b>institutional buy setups</b>.<br>
-        `;
-      } else {
-        explanation = `
-        <b>Explanation:</b><br>
-        - Either RoC(10d) was positive (no reset),<br>
-        - Or price failed to close above AVWAP.<br>
-        - Without both, conditions do not align with institutional buy setups.<br>
-        `;
-      }
-
-      document.getElementById("result").innerHTML = `
-        <b>Ticker:</b> ${ticker.toUpperCase()}<br>
-        <b>Latest Close:</b> ₹${latest}<br>
-        <b>RoC(10d):</b> ${(latestRoc*100).toFixed(2)}%<br>
-        <b>AVWAP:</b> ₹${latestAvwap.toFixed(2)}<br>
-        <b>Signal:</b> ${pass ? "PASS ✅" : "FAIL ❌"}<br><br>
-        ${pass ? `
-          <b>Entry:</b> ₹${latest}<br>
-          <b>Stop Loss:</b> ₹${sl}<br>
-          <b>Target:</b> ₹${target
+        - RoC(10d) was negative
