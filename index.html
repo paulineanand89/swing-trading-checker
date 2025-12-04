@@ -16,8 +16,6 @@
     .section-title { font-size:18px; margin-bottom:10px; color:#2c3e50; font-weight:bold; }
     .row { display:flex; gap:10px; align-items:center; margin-top:8px; }
     .status { font-size:12px; color:#666; margin-top:8px; min-height:16px; }
-    .error { color:#b00020; }
-    .ok { color:#2e7d32; }
   </style>
 </head>
 <body>
@@ -29,11 +27,6 @@
       <div id="about">
         <div class="section-title">About this strategy</div>
         This tool identifies <b>institutional-style buy setups</b> by combining momentum reset and trend resumption.<br><br>
-        <b>Key concepts:</b><br>
-        • <b>Institutional Buy Zone</b> → price resets but holds above fair value.<br>
-        • <b>Momentum Reset (RoC negative)</b> → short-term weakness that shakes out retail traders.<br>
-        • <b>Trend Resumption (Close > AVWAP)</b> → price reclaiming anchored VWAP, often used by institutions.<br>
-        • <b>Risk Management</b> → entry, stop loss, target, and position sizing ensure discipline.<br><br>
         <b>Conditions:</b><br>
         1. RoC(10d) < 0 → momentum reset.<br>
         2. Latest Close > AVWAP → trend resumption.<br>
@@ -53,31 +46,10 @@
     <!-- Right column: Inputs and Results -->
     <div class="card">
       <div class="section-title">Check a signal</div>
-
       <label>Select crypto:</label>
       <select id="ticker">
-        <!-- Static curated list + Kaspa -->
+        <!-- Kaspa always included -->
         <option value="kaspa" selected>KAS - Kaspa</option>
-        <option value="bitcoin">BTC - Bitcoin</option>
-        <option value="ethereum">ETH - Ethereum</option>
-        <option value="tether">USDT - Tether</option>
-        <option value="binancecoin">BNB - BNB</option>
-        <option value="ripple">XRP - Ripple</option>
-        <option value="cardano">ADA - Cardano</option>
-        <option value="dogecoin">DOGE - Dogecoin</option>
-        <option value="solana">SOL - Solana</option>
-        <option value="tron">TRX - Tron</option>
-        <option value="polkadot">DOT - Polkadot</option>
-        <option value="matic-network">MATIC - Polygon</option>
-        <option value="litecoin">LTC - Litecoin</option>
-        <option value="uniswap">UNI - Uniswap</option>
-        <option value="chainlink">LINK - Chainlink</option>
-        <option value="near">NEAR - NEAR</option>
-        <option value="aptos">APT - Aptos</option>
-        <option value="render-token">RNDR - Render</option>
-        <option value="pepe">PEPE - Pepe</option>
-        <option value="arbitrum">ARB - Arbitrum</option>
-        <!-- Add/remove as needed -->
       </select>
 
       <div class="row">
@@ -98,25 +70,37 @@
   </div>
 
   <script>
-    // Timeout wrapper for fetch
-    async function fetchWithTimeout(url, ms = 7000) {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), ms);
+    // Load Kaspa + top 100 coins
+    async function loadTop100Coins() {
+      const dropdown = document.getElementById("ticker");
+      const statusEl = document.getElementById("status");
+
       try {
-        const res = await fetch(url, { signal: controller.signal });
-        clearTimeout(id);
-        return res;
-      } catch (e) {
-        clearTimeout(id);
-        throw e;
+        statusEl.textContent = "Loading top 100 coins…";
+        const url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1";
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const coins = await res.json();
+
+        coins.forEach(c => {
+          if (c.id !== "kaspa") { // avoid duplicate Kaspa
+            const opt = document.createElement("option");
+            opt.value = c.id;
+            opt.textContent = c.symbol.toUpperCase() + " - " + c.name;
+            dropdown.appendChild(opt);
+          }
+        });
+        statusEl.textContent = "Loaded successfully.";
+      } catch (err) {
+        console.error("Error loading coins:", err);
+        statusEl.textContent = "Failed to load coins. Check your network or API availability.";
       }
     }
 
-    // OHLC fetch with INR→USD fallback
     async function fetchOhlcReliable(ticker) {
       const tryFetch = async (currency) => {
         const url = `https://api.coingecko.com/api/v3/coins/${ticker}/ohlc?vs_currency=${currency}&days=30`;
-        const res = await fetchWithTimeout(url, 7000);
+        const res = await fetch(url);
         if (!res.ok) return [];
         const data = await res.json();
         return Array.isArray(data) ? data : [];
@@ -132,7 +116,6 @@
       }
     }
 
-    // AVWAP from anchor at highest close
     function computeAVWAP(closes) {
       const highestClose = Math.max(...closes);
       const anchorIndex = closes.lastIndexOf(highestClose);
@@ -145,7 +128,6 @@
       return avwap;
     }
 
-    // RoC
     function computeRoC(closes, period=10) {
       return closes.map((c,i) => i<period ? null : (c - closes[i-period])/closes[i-period]);
     }
@@ -160,19 +142,6 @@
       const capital = parseFloat(document.getElementById("capital").value);
       const riskPct = parseFloat(document.getElementById("risk").value)/100;
 
-      // Basic validation
-      if (!ticker) {
-        statusEl.textContent = "";
-        resultEl.innerHTML = '<span class="error">Please select a coin.</span>';
-        return;
-      }
-      if (isNaN(capital) || capital <= 0 || isNaN(riskPct) || riskPct <= 0) {
-        statusEl.textContent = "";
-        resultEl.innerHTML = '<span class="error">Enter valid capital and risk % values.</span>';
-        return;
-      }
-
-      // Fetch OHLC
       const raw = await fetchOhlcReliable(ticker);
       if (!raw || raw.length === 0) {
         statusEl.textContent = "";
@@ -185,7 +154,6 @@
         return;
       }
 
-      // Compute series
       const closes = raw.map(d => d[4]);
       const lows   = raw.map(d => d[3]);
       const latest = closes[closes.length-1];
@@ -206,10 +174,6 @@
       const target = latest + 2*riskPts;
       const positionSize = riskPts > 0 ? (capital*riskPct)/riskPts : 0;
 
-      let guardrailMsg = "";
-      if (!hasRoc) guardrailMsg += "- Not enough history to compute RoC(10).<br>";
-      if (!hasAvwap) guardrailMsg += "- AVWAP not available yet (anchor too recent).<br>";
-
       let explanation = "";
       if (pass) {
         explanation = `
@@ -221,32 +185,8 @@
       } else {
         explanation = `
           <b>Explanation:</b><br>
-          ${guardrailMsg ? guardrailMsg : "- Either RoC(10d) was positive (no reset), or price failed to close above AVWAP."}<br>
+          - Either RoC(10d) was positive (no reset), or price failed to close above AVWAP.<br>
           - Without both, conditions do not align with institutional buy setups.<br>
         `;
       }
 
-      statusEl.textContent = "";
-      resultEl.innerHTML = `
-        <b>Ticker:</b> ${ticker.toUpperCase()}<br>
-        <b>Latest Close:</b> ₹${Number(latest).toFixed(4)}<br>
-        <b>RoC(10d):</b> ${hasRoc ? (latestRoc*100).toFixed(2) + "%" : "N/A"}<br>
-        <b>AVWAP:</b> ${hasAvwap ? "₹" + Number(latestAvwap).toFixed(4) : "N/A"}<br>
-        <b>Signal:</b> ${pass ? "PASS ✅" : "FAIL ❌"}<br><br>
-        ${pass ? `
-          <b>Entry:</b> ₹${Number(latest).toFixed(4)}<br>
-          <b>Stop Loss:</b> ₹${Number(sl).toFixed(4)}<br>
-          <b>Target:</b> ₹${Number(target).toFixed(4)}<br>
-          <b>Position Size:</b> ${positionSize > 0 ? Number(positionSize).toFixed(4) + " units" : "N/A"}<br><br>
-        ` : ""}
-        ${explanation}
-      `;
-    }
-
-    // Wire up events
-    document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("checkBtn").addEventListener("click", checkSignal);
-    });
-  </script>
-</body>
-</html>
