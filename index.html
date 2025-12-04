@@ -3,8 +3,10 @@
 <head>
   <meta charset="utf-8">
   <title>Swing Trading Signal Checker</title>
+  <!-- Chart.js core -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+  <!-- Financial chart plugin (candlesticks) -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@3.0.0"></script>
   <style>
     body { font-family: Arial; margin: 20px; }
     h1 { text-align: center; }
@@ -12,13 +14,33 @@
     label { display:block; margin-top:10px; }
     canvas { margin-top: 20px; }
     .toggle { margin-top: 10px; }
+    #about { background:#f9f9f9; border:1px solid #ddd; padding:15px; margin-bottom:20px; }
   </style>
 </head>
 <body>
   <h1>Swing Trading Strategy Checker</h1>
 
+  <!-- About panel -->
+  <div id="about">
+    <b>About This Strategy:</b><br>
+    This tool identifies <b>institutional-style buy setups</b by combining momentum reset and trend resumption.<br><br>
+    <b>Key Concepts:</b><br>
+    • <b>Institutional Buy Zone</b> → price resets but holds above fair value.<br>
+    • <b>Momentum Reset (RoC negative)</b> → short-term weakness that shakes out retail traders.<br>
+    • <b>Trend Resumption (Close > AVWAP)</b> → price reclaiming anchored VWAP, often used by institutions.<br>
+    • <b>Risk Management</b> → entry, stop loss, target, and position sizing ensure discipline.<br><br>
+    <b>Conditions:</b><br>
+    1. RoC(10d) < 0 → momentum reset.<br>
+    2. Latest Close > AVWAP → trend resumption.<br>
+    3. Both together → PASS ✅ (potential institutional buy setup).<br>
+    4. If either fails → FAIL ❌ (no setup).<br>
+  </div>
+
   <label>Select Crypto:</label>
-  <select id="ticker"></select>
+  <select id="ticker">
+    <!-- Explicit Kaspa option -->
+    <option value="kaspa">KAS - Kaspa</option>
+  </select>
 
   <label>Capital (₹):</label>
   <input id="capital" type="number" value="25000">
@@ -43,14 +65,13 @@
   <canvas id="rocChart" width="800" height="200"></canvas>
 
   <script>
-    // Load top 50 coins dynamically
+    // Load top 50 coins dynamically and append to dropdown
     async function loadTopCoins() {
       const url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=inr&order=market_cap_desc&per_page=50&page=1";
       const res = await fetch(url);
       const coins = await res.json();
 
       const dropdown = document.getElementById("ticker");
-      dropdown.innerHTML = "";
 
       coins.forEach(c => {
         const opt = document.createElement("option");
@@ -94,7 +115,7 @@
       }
 
       const candles = raw.map(d => ({
-        x: new Date(d[0]),
+        x: new Date(d[0]), // Chart.js financial expects x
         o: d[1],
         h: d[2],
         l: d[3],
@@ -129,14 +150,14 @@
         <b>Explanation:</b><br>
         - RoC(10d) was negative, showing momentum reset.<br>
         - Price closed above AVWAP, confirming trend resumption.<br>
-        - Together, these conditions signal a valid swing entry.<br>
+        - These conditions often align with <b>institutional buy setups</b>.<br>
         `;
       } else {
         explanation = `
         <b>Explanation:</b><br>
         - Either RoC(10d) was positive (no reset),<br>
         - Or price failed to close above AVWAP.<br>
-        - Without both conditions, the swing setup is invalid.<br>
+        - Without both, conditions do not align with institutional buy setups.<br>
         `;
       }
 
@@ -160,34 +181,4 @@
       if (window.candleChartObj) window.candleChartObj.destroy();
       const datasets = [{ label: 'Candles', data: candles }];
       if (document.getElementById("showAvwap").checked) {
-        datasets.push({ label: 'AVWAP', type: 'line', data: candles.map((c,i)=>({x:c.x,y:avwap[i]})), borderColor:'blue', fill:false });
-      }
-      window.candleChartObj = new Chart(ctx1, {
-        type: 'candlestick',
-        data: { datasets }
-      });
-
-      // Draw RoC chart
-      const ctx2 = document.getElementById("rocChart").getContext("2d");
-      if (window.rocChartObj) window.rocChartObj.destroy();
-      if (document.getElementById("showRoc").checked) {
-        window.rocChartObj = new Chart(ctx2, {
-          type: 'line',
-          data: {
-            labels: candles.map(c=>c.x),
-            datasets: [
-              { label: 'RoC(10d)', data: roc, borderColor:'orange', fill:false },
-              { label: 'Zero', data: roc.map(()=>0), borderColor:'gray', borderDash:[5,5], fill:false }
-            ]
-          }
-        });
-      } else {
-        ctx2.clearRect(0,0,ctx2.canvas.width,ctx2.canvas.height);
-      }
-    }
-
-    // Load dropdown on page start
-    loadTopCoins();
-  </script>
-</body>
-</html>
+        datasets.push({ label: 'AVWAP', type: 'line', data: candles.map((c,i)=>({x:c.x,y:avwap[i]})), border
