@@ -11,6 +11,7 @@
     .panel { border: 1px solid #ccc; padding: 15px; margin-top: 20px; }
     label { display:block; margin-top:10px; }
     canvas { margin-top: 20px; }
+    .toggle { margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -26,6 +27,15 @@
   <input id="risk" type="number" value="2">
 
   <button onclick="checkSignal()">Check</button>
+
+  <div class="toggle">
+    <input type="checkbox" id="showAvwap" checked>
+    <label for="showAvwap">Show AVWAP Line</label>
+  </div>
+  <div class="toggle">
+    <input type="checkbox" id="showRoc" checked>
+    <label for="showRoc">Show RoC Chart</label>
+  </div>
 
   <div id="result" class="panel"></div>
 
@@ -84,7 +94,7 @@
       }
 
       const candles = raw.map(d => ({
-        x: new Date(d[0]), // Chart.js financial expects x
+        x: new Date(d[0]),
         o: d[1],
         h: d[2],
         l: d[3],
@@ -148,29 +158,32 @@
       // Draw candlestick + AVWAP
       const ctx1 = document.getElementById("candleChart").getContext("2d");
       if (window.candleChartObj) window.candleChartObj.destroy();
+      const datasets = [{ label: 'Candles', data: candles }];
+      if (document.getElementById("showAvwap").checked) {
+        datasets.push({ label: 'AVWAP', type: 'line', data: candles.map((c,i)=>({x:c.x,y:avwap[i]})), borderColor:'blue', fill:false });
+      }
       window.candleChartObj = new Chart(ctx1, {
         type: 'candlestick',
-        data: {
-          datasets: [
-            { label: 'Candles', data: candles },
-            { label: 'AVWAP', type: 'line', data: candles.map((c,i)=>({x:c.x,y:avwap[i]})), borderColor:'blue', fill:false }
-          ]
-        }
+        data: { datasets }
       });
 
       // Draw RoC chart
       const ctx2 = document.getElementById("rocChart").getContext("2d");
       if (window.rocChartObj) window.rocChartObj.destroy();
-      window.rocChartObj = new Chart(ctx2, {
-        type: 'line',
-        data: {
-          labels: candles.map(c=>c.x),
-          datasets: [
-            { label: 'RoC(10d)', data: roc, borderColor:'orange', fill:false },
-            { label: 'Zero', data: roc.map(()=>0), borderColor:'gray', borderDash:[5,5], fill:false }
-          ]
-        }
-      });
+      if (document.getElementById("showRoc").checked) {
+        window.rocChartObj = new Chart(ctx2, {
+          type: 'line',
+          data: {
+            labels: candles.map(c=>c.x),
+            datasets: [
+              { label: 'RoC(10d)', data: roc, borderColor:'orange', fill:false },
+              { label: 'Zero', data: roc.map(()=>0), borderColor:'gray', borderDash:[5,5], fill:false }
+            ]
+          }
+        });
+      } else {
+        ctx2.clearRect(0,0,ctx2.canvas.width,ctx2.canvas.height);
+      }
     }
 
     // Load dropdown on page start
