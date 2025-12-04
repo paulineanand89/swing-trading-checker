@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Swing Trading Signal</title>
+  <title>Swing Trading Signal Checker</title>
   <style>
     body { font-family: Arial; margin: 20px; }
     .panel { border: 1px solid #ccc; padding: 15px; margin-top: 20px; }
+    label { display:block; margin-top:10px; }
   </style>
 </head>
 <body>
@@ -22,14 +23,13 @@
     <option value="hedera-hashgraph">HBAR</option>
     <option value="kaspa">KAS</option>
   </select>
-  <br><br>
 
   <label>Capital (₹):</label>
   <input id="capital" type="number" value="25000">
-  <br><br>
+
   <label>Risk %:</label>
   <input id="risk" type="number" value="2">
-  <br><br>
+
   <button onclick="checkSignal()">Check</button>
 
   <div id="result" class="panel"></div>
@@ -75,7 +75,7 @@
       const positionSize = (capital*riskPct)/riskPts;
 
       document.getElementById("result").innerHTML = `
-        <b>Ticker:</b> ${ticker}<br>
+        <b>Ticker:</b> ${ticker.toUpperCase()}<br>
         <b>Latest Close:</b> ₹${latest}<br>
         <b>RoC(10d):</b> ${(roc*100).toFixed(2)}%<br>
         <b>AVWAP:</b> ₹${avwap.toFixed(2)}<br>
