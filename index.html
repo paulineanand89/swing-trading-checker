@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Swing Trading Signal</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    .panel { border: 1px solid #ccc; padding: 15px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Swing Trading Strategy Checker</h1>
+
+  <label>Enter Ticker:</label>
+  <input id="ticker" type="text" value="bitcoin">
+  <br><br>
+  <label>Capital (₹):</label>
+  <input id="capital" type="number" value="25000">
+  <br><br>
+  <label>Risk %:</label>
+  <input id="risk" type="number" value="2">
+  <br><br>
+  <button onclick="checkSignal()">Check</button>
+
+  <div id="result" class="panel"></div>
+
+  <script>
+    async function fetchCrypto(ticker) {
+      const url = `https://api.coingecko.com/api/v3/coins/${ticker}/ohlc?vs_currency=inr&days=30`;
+      const res = await fetch(url);
+      return await res.json(); // [timestamp, open, high, low, close]
+    }
+
+    async function fetchStock(ticker) {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1mo`;
+      const res = await fetch(url);
+      const json = await res.json();
+      const quotes = json.chart.result[0].indicators.quote[0];
+      const timestamps = json.chart.result[0].timestamp;
+      return timestamps.map((t,i)=>[t*1000, quotes.open[i], quotes.high[i], quotes.low[i], quotes.close[i]]);
+    }
+
+    async function checkSignal() {
+      const ticker = document.getElementById("ticker").value;
+      const capital = parseFloat(document.getElementById("capital").value);
+      const riskPct = parseFloat(document.getElementById("risk").value)/100;
+
+      let data;
+      if (ticker.toLowerCase().includes("bitcoin") || ticker.toLowerCase().includes("eth")) {
+        data = await fetchCrypto(ticker);
+      } else {
+        data = await fetchStock(ticker);
+      }
+
+      if (!data || data.length === 0) {
+        document.getElementById("result").innerHTML = "No data found.";
+        return;
+      }
+
+      const closes = data.map(d => d[4]);
+      const lows = data.map(d => d[3]);
+      const latest = closes[closes.length-1];
+
+      // RoC (10-day)
+      const prev = closes[closes.length-11];
+      const roc = (latest - prev) / prev;
+
+      // Anchored VWAP proxy = average close from swing high
+      const highestClose = Math.max(...closes);
+      const anchorIndex = closes.lastIndexOf(highestClose);
+      const avwap = closes.slice(anchorIndex).reduce((s,x)=>s+x,0) / (closes.length-anchorIndex);
+
+      // PASS/FAIL
+      const pass = roc < 0 ? (latest > avwap) : false;
+
+      // SL, Target, Position
+      const sl = Math.min(...lows);
+      const riskPts = latest - sl;
+      const target = latest + 2*riskPts;
+      const positionSize = (capital*riskPct)/riskPts;
+
+      document.getElementById("result").innerHTML = `
+        <b>Ticker:</b> ${ticker}<br>
+        <b>Latest Close:</b> ₹${latest}<br>
+        <b>RoC(10d):</b> ${(roc*100).toFixed(2)}%<br>
+        <b>AVWAP:</b> ₹${avwap.toFixed(2)}<br>
+        <b>Signal:</b> ${pass ? "PASS ✅" : "FAIL ❌"}<br><br>
+        ${pass ? `
+          <b>Entry:</b> ₹${latest}<br>
+          <b>Stop Loss:</b> ₹${sl}<br>
+          <b>Target:</b> ₹${target}<br>
+          <b>Position Size:</b> ${positionSize.toFixed(4)} units
+        ` : "No trade setup"}
+      `;
+    }
+  </script>
+</body>
+</html>
