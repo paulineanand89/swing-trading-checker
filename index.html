@@ -129,4 +129,17 @@
 
   <script>
     async function fetchOhlcReliable(ticker) {
-      const tryFetch =
+      const tryFetch = async (currency) => {
+        const url = `https://api.coingecko.com/api/v3/coins/${ticker}/ohlc?vs_currency=${currency}&days=90`;
+        const res = await fetch(url);
+        if (!res.ok) return { data: [], currency, ok: false };
+        const data = await res.json();
+        return { data: Array.isArray(data) ? data : [], currency, ok: true };
+      };
+      let r = await tryFetch("inr");
+      if (!r.data.length) r = await tryFetch("usd");
+      return r;
+    }
+
+    async function fetchMarketInfo(ticker) {
+      const
