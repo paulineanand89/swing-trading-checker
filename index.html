@@ -3,17 +3,11 @@
 <head>
   <meta charset="utf-8">
   <title>Swing Trading Signal Checker</title>
-  <!-- Chart.js core -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Financial chart plugin (candlesticks) -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@3.0.0"></script>
   <style>
     body { font-family: Arial; margin: 20px; }
     h1 { text-align: center; }
     .panel { border: 1px solid #ccc; padding: 15px; margin-top: 20px; }
     label { display:block; margin-top:10px; }
-    canvas { margin-top: 20px; }
-    .toggle { margin-top: 10px; }
     #about { background:#f9f9f9; border:1px solid #ddd; padding:15px; margin-bottom:20px; }
   </style>
 </head>
@@ -50,35 +44,27 @@
 
   <button onclick="checkSignal()">Check</button>
 
-  <div class="toggle">
-    <input type="checkbox" id="showAvwap" checked>
-    <label for="showAvwap">Show AVWAP Line</label>
-  </div>
-  <div class="toggle">
-    <input type="checkbox" id="showRoc" checked>
-    <label for="showRoc">Show RoC Chart</label>
-  </div>
-
   <div id="result" class="panel"></div>
-
-  <canvas id="candleChart" width="800" height="400"></canvas>
-  <canvas id="rocChart" width="800" height="200"></canvas>
 
   <script>
     // Load top 50 coins dynamically and append to dropdown
     async function loadTopCoins() {
-      const url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=inr&order=market_cap_desc&per_page=50&page=1";
-      const res = await fetch(url);
-      const coins = await res.json();
+      try {
+        const url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=inr&order=market_cap_desc&per_page=50&page=1";
+        const res = await fetch(url);
+        const coins = await res.json();
 
-      const dropdown = document.getElementById("ticker");
+        const dropdown = document.getElementById("ticker");
 
-      coins.forEach(c => {
-        const opt = document.createElement("option");
-        opt.value = c.id;   // CoinGecko ID
-        opt.textContent = c.symbol.toUpperCase() + " - " + c.name;
-        dropdown.appendChild(opt);
-      });
+        coins.forEach(c => {
+          const opt = document.createElement("option");
+          opt.value = c.id;   // CoinGecko ID
+          opt.textContent = c.symbol.toUpperCase() + " - " + c.name;
+          dropdown.appendChild(opt);
+        });
+      } catch (err) {
+        console.error("Error loading coins:", err);
+      }
     }
 
     async function fetchData(ticker) {
@@ -114,16 +100,8 @@
         return;
       }
 
-      const candles = raw.map(d => ({
-        x: new Date(d[0]), // Chart.js financial expects x
-        o: d[1],
-        h: d[2],
-        l: d[3],
-        c: d[4]
-      }));
-
-      const closes = candles.map(c => c.c);
-      const lows = candles.map(c => c.l);
+      const closes = raw.map(d => d[4]);
+      const lows = raw.map(d => d[3]);
       const latest = closes[closes.length-1];
 
       // RoC
@@ -175,10 +153,10 @@
         ` : ""}
         ${explanation}
       `;
+    }
 
-      // Draw candlestick + AVWAP
-      const ctx1 = document.getElementById("candleChart").getContext("2d");
-      if (window.candleChartObj) window.candleChartObj.destroy();
-      const datasets = [{ label: 'Candles', data: candles }];
-      if (document.getElementById("showAvwap").checked) {
-        datasets.push({ label: 'AVWAP', type: 'line', data: candles.map((c,i)=>({x:c.x,y:avwap[i]})), border
+    // Load dropdown on page start
+    loadTopCoins();
+  </script>
+</body>
+</html>
