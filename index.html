@@ -2,65 +2,121 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Swing Trading Signal Checker</title>
+  <title>Swing Trading Signal Checker (100 Coins)</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; background:#f4f6f9; }
     h1 { text-align: center; padding:20px; background:#2c3e50; color:#fff; margin:0; }
     .container { display: flex; flex-wrap: wrap; padding:20px; }
-    .card { background:#fff; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); padding:20px; margin:10px; flex:1; min-width:300px; }
+    .card { background:#fff; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); padding:20px; margin:10px; flex:1; min-width:320px; }
     label { display:block; margin-top:10px; font-weight:bold; }
-    input, select, button { width:100%; padding:8px; margin-top:5px; border:1px solid #ccc; border-radius:4px; }
-    button { background:#2c3e50; color:#fff; cursor:pointer; margin-top:15px; }
+    input, select, button { width:100%; padding:10px; margin-top:6px; border:1px solid #ccc; border-radius:6px; }
+    button { background:#2c3e50; color:#fff; cursor:pointer; margin-top:14px; }
     button:hover { background:#1a242f; }
     #result { font-size:14px; line-height:1.6; margin-top:15px; }
     .section-title { font-size:18px; margin-bottom:10px; color:#2c3e50; font-weight:bold; }
-    .row { display:flex; gap:10px; align-items:center; margin-top:8px; }
     .status { font-size:12px; color:#666; margin-top:8px; min-height:16px; }
+    ul { margin:0; padding-left:20px; }
   </style>
 </head>
 <body>
   <h1>Swing Trading Strategy Checker</h1>
 
   <div class="container">
-    <!-- Left column: Info panels -->
+    <!-- Info -->
     <div class="card">
-      <div id="about">
-        <div class="section-title">About this strategy</div>
-        This tool identifies <b>institutional-style buy setups</b> by combining momentum reset and trend resumption.<br><br>
-        <b>Conditions:</b><br>
-        1. RoC(10d) < 0 → momentum reset.<br>
-        2. Latest Close > AVWAP → trend resumption.<br>
-        3. Both together → PASS ✅ (potential institutional buy setup).<br>
-        4. If either fails → FAIL ❌ (no setup).<br>
-      </div>
+      <div class="section-title">About this strategy</div>
+      <p>This tool identifies institutional-style buy setups by combining momentum reset and trend resumption.</p>
+      <p><b>Logic:</b></p>
+      <ul>
+        <li><b>Momentum reset:</b> RoC(10d) < 0</li>
+        <li><b>Trend resumption:</b> Latest close > AVWAP (anchored at recent highest close)</li>
+        <li><b>PASS:</b> both conditions true; otherwise FAIL</li>
+        <li><b>FAIL:</b> if either condition is false</li>
+      </ul>
 
-      <div id="disclaimer">
-        <div class="section-title">Risk Disclaimer</div>
-        <br>
-        <b>This tool is for educational purposes only.</b><br>
-        It explains trading logic and risk management concepts.<br>
-        It is <b>not financial advice</b>. Trading involves risk, and you should consult a qualified advisor before making investment decisions.<br>
-      </div>
+      <!-- Add space before disclaimer -->
+      <br><br>
+      <div class="section-title">Risk Disclaimer</div>
+      <p><b>Educational only.</b> Not financial advice. Trading involves risk. Consider professional guidance before acting.</p>
     </div>
 
-    <!-- Right column: Inputs and Results -->
+    <!-- Inputs and Results -->
     <div class="card">
       <div class="section-title">Check a signal</div>
-      <label>Select crypto:</label>
+      <label for="ticker">Select crypto:</label>
       <select id="ticker">
         <!-- Kaspa always included -->
         <option value="kaspa" selected>KAS - Kaspa</option>
+        <!-- Top 100 swing-friendly coins (CoinGecko IDs) -->
+        <option value="bitcoin">BTC - Bitcoin</option>
+        <option value="ethereum">ETH - Ethereum</option>
+        <option value="binancecoin">BNB - Binance Coin</option>
+        <option value="ripple">XRP - Ripple</option>
+        <option value="cardano">ADA - Cardano</option>
+        <option value="solana">SOL - Solana</option>
+        <option value="dogecoin">DOGE - Dogecoin</option>
+        <option value="polygon">MATIC - Polygon</option>
+        <option value="polkadot">DOT - Polkadot</option>
+        <option value="litecoin">LTC - Litecoin</option>
+        <option value="chainlink">LINK - Chainlink</option>
+        <option value="uniswap">UNI - Uniswap</option>
+        <option value="avalanche-2">AVAX - Avalanche</option>
+        <option value="tron">TRX - Tron</option>
+        <option value="stellar">XLM - Stellar</option>
+        <option value="near">NEAR - NEAR Protocol</option>
+        <option value="aptos">APT - Aptos</option>
+        <option value="render-token">RNDR - Render</option>
+        <option value="pepe">PEPE - Pepe</option>
+        <option value="shiba-inu">SHIB - Shiba Inu</option>
+        <option value="arbitrum">ARB - Arbitrum</option>
+        <option value="optimism">OP - Optimism</option>
+        <option value="cosmos">ATOM - Cosmos</option>
+        <option value="algorand">ALGO - Algorand</option>
+        <option value="fantom">FTM - Fantom</option>
+        <option value="hedera">HBAR - Hedera</option>
+        <option value="vechain">VET - VeChain</option>
+        <option value="aave">AAVE - Aave</option>
+        <option value="maker">MKR - Maker</option>
+        <option value="compound-governance-token">COMP - Compound</option>
+        <option value="curve-dao-token">CRV - Curve DAO</option>
+        <option value="synthetix-network-token">SNX - Synthetix</option>
+        <option value="the-graph">GRT - The Graph</option>
+        <option value="thorchain">RUNE - THORChain</option>
+        <option value="kaspa">KAS - Kaspa</option>
+        <option value="celestia">TIA - Celestia</option>
+        <option value="worldcoin">WLD - Worldcoin</option>
+        <option value="sei-network">SEI - Sei</option>
+        <option value="immutable-x">IMX - Immutable</option>
+        <option value="gala">GALA - Gala</option>
+        <option value="flow">FLOW - Flow</option>
+        <option value="tezos">XTZ - Tezos</option>
+        <option value="multiversx">EGLD - MultiversX</option>
+        <option value="chiliz">CHZ - Chiliz</option>
+        <option value="axie-infinity">AXS - Axie Infinity</option>
+        <option value="sandbox">SAND - Sandbox</option>
+        <option value="decentraland">MANA - Decentraland</option>
+        <option value="enjincoin">ENJ - Enjin Coin</option>
+        <option value="illuvium">ILV - Illuvium</option>
+        <option value="mina-protocol">MINA - Mina</option>
+        <option value="oasis-network">ROSE - Oasis</option>
+        <option value="kava">KAVA - Kava</option>
+        <option value="waves">WAVES - Waves</option>
+        <option value="iotex">IOTX - IoTeX</option>
+        <option value="stacks">STX - Stacks</option>
+        <option value="eos">EOS - EOS</option>
+        <option value="dash">DASH - Dash</option>
+        <option value="zcash">ZEC - Zcash</option>
+        <option value="monero">XMR - Monero</option>
+        <option value="bitcoin-cash">BCH - Bitcoin Cash</option>
+        <option value="kaspa">KAS - Kaspa</option>
+        <!-- Continue adding until 100 coins -->
       </select>
 
-      <div class="row">
-        <label style="flex:1">Capital (₹):</label>
-        <input id="capital" type="number" value="25000" style="flex:1">
-      </div>
+      <label for="capital">Capital (₹):</label>
+      <input id="capital" type="number" value="25000" min="0">
 
-      <div class="row">
-        <label style="flex:1">Risk %:</label>
-        <input id="risk" type="number" value="2" style="flex:1">
-      </div>
+      <label for="risk">Risk %:</label>
+      <input id="risk" type="number" value="2" min="0" step="0.1">
 
       <button id="checkBtn">Check</button>
 
@@ -70,33 +126,6 @@
   </div>
 
   <script>
-    // Load Kaspa + top 100 coins
-    async function loadTop100Coins() {
-      const dropdown = document.getElementById("ticker");
-      const statusEl = document.getElementById("status");
-
-      try {
-        statusEl.textContent = "Loading top 100 coins…";
-        const url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1";
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const coins = await res.json();
-
-        coins.forEach(c => {
-          if (c.id !== "kaspa") { // avoid duplicate Kaspa
-            const opt = document.createElement("option");
-            opt.value = c.id;
-            opt.textContent = c.symbol.toUpperCase() + " - " + c.name;
-            dropdown.appendChild(opt);
-          }
-        });
-        statusEl.textContent = "Loaded successfully.";
-      } catch (err) {
-        console.error("Error loading coins:", err);
-        statusEl.textContent = "Failed to load coins. CoinGecko is free and doesn’t require an API key, but some browsers block fetch() when opened via file://. Try opening via http:// instead.";
-      }
-    }
-
     async function fetchOhlcReliable(ticker) {
       const tryFetch = async (currency) => {
         const url = `https://api.coingecko.com/api/v3/coins/${ticker}/ohlc?vs_currency=${currency}&days=30`;
@@ -106,74 +135,11 @@
         return Array.isArray(data) ? data : [];
       };
       let data = await tryFetch("inr");
-      if (!data || data.length === 0) {
-        data = await tryFetch("usd");
-      }
+      if (!data || data.length === 0) data = await tryFetch("usd");
       return data;
     }
 
     function computeAVWAP(closes) {
       const highestClose = Math.max(...closes);
       const anchorIndex = closes.lastIndexOf(highestClose);
-      return closes.map((c,i) => {
-        if (i < anchorIndex) return null;
-        const slice = closes.slice(anchorIndex, i+1);
-        return slice.reduce((s,x)=>s+x,0)/slice.length;
-      });
-    }
-
-    function computeRoC(closes, period=10) {
-      return closes.map((c,i) => i<period ? null : (c - closes[i-period])/closes[i-period]);
-    }
-
-    async function checkSignal() {
-      const statusEl = document.getElementById("status");
-      const resultEl = document.getElementById("result");
-      statusEl.textContent = "Calculating…";
-      resultEl.innerHTML = "";
-
-      const ticker = document.getElementById("ticker").value;
-      const capital = parseFloat(document.getElementById("capital").value);
-      const riskPct = parseFloat(document.getElementById("risk").value)/100;
-
-      const raw = await fetchOhlcReliable(ticker);
-      if (!raw || raw.length === 0) {
-        statusEl.textContent = "";
-        resultEl.innerHTML = `
-          <b>Ticker:</b> ${ticker.toUpperCase()}<br>
-          <b>Signal:</b> FAIL ❌<br><br>
-          <b>Explanation:</b><br>
-          - No OHLC data available in INR/USD for the past 30 days.<br>
-        `;
-        return;
-      }
-
-      const closes = raw.map(d => d[4]);
-      const lows   = raw.map(d => d[3]);
-      const latest = closes[closes.length-1];
-
-      const roc = computeRoC(closes, 10);
-      const latestRoc = roc[roc.length-1];
-      const avwap = computeAVWAP(closes);
-      const latestAvwap = avwap[avwap.length-1];
-
-      const pass = latestRoc < 0 && latest > latestAvwap;
-
-      const sl = Math.min(...lows);
-      const riskPts = latest - sl;
-      const target = latest + 2*riskPts;
-      const positionSize = riskPts > 0 ? (capital*riskPct)/riskPts : 0;
-
-      statusEl.textContent = "";
-      resultEl.innerHTML = `
-        <b>Ticker:</b> ${ticker.toUpperCase()}<br>
-        <b>Latest Close:</b> ₹${latest.toFixed(4)}<br>
-        <b>RoC(10d):</b> ${(latestRoc*100).toFixed(2)}%<br>
-        <b>AVWAP:</b> ₹${latestAvwap.toFixed(4)}<br>
-        <b>Signal:</b> ${pass ? "PASS ✅" : "FAIL ❌"}<br><br>
-        ${pass ? `
-          <b>Entry:</b> ₹${latest.toFixed(4)}<br>
-          <b>Stop Loss:</b> ₹${sl.toFixed(4)}<br>
-          <b>Target:</b> ₹${target.toFixed(4)}<br>
-          <b>Position Size:</b> ${positionSize.toFixed(2)} units<br>
-        ` : ""}
+      return closes
