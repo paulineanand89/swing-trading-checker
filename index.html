@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Swing Trading Signal Checker (100 Coins, Full Strategy)</title>
+  <title>Swing Trading Signal Checker (100 Coins)</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; background:#f4f6f9; }
     h1 { text-align: center; padding:20px; background:#2c3e50; color:#fff; margin:0; }
@@ -16,7 +16,6 @@
     .section-title { font-size:18px; margin-bottom:10px; color:#2c3e50; font-weight:bold; }
     .status { font-size:12px; color:#666; margin-top:8px; min-height:16px; }
     ul { margin:0; padding-left:20px; }
-    .small { font-size:12px; color:#555; }
     .ok { color:#2e7d32; }
     .bad { color:#c62828; }
   </style>
@@ -31,18 +30,19 @@
       <p>This tool identifies institutional-style buy setups by combining momentum reset and trend resumption.</p>
       <p><b>Conditions:</b></p>
       <ul>
-        <li><b>RoC(10d) &lt; 0</b> → momentum reset.</li>
-        <li><b>Latest close &gt; AVWAP</b> → trend resumption.</li>
-        <li><b>Both together → PASS ✅</b> (potential institutional buy setup).</li>
-        <li><b>If either fails → FAIL ❌</b> (no setup).</li>
+        <li>RoC(10d) &lt; 0 → momentum reset</li>
+        <li>Latest close &gt; AVWAP → trend resumption</li>
+        <li>EMA20 rising and price above EMA20</li>
+        <li>HH–HL structure required; ignore if LH–LL</li>
+        <li>SL below swing low and AVWAP</li>
+        <li>Target = 2× risk (RR 1:2)</li>
       </ul>
 
       <br><br>
-      <div class="section-title">Risk disclaimer</div>
+      <div class="section-title">Risk Disclaimer</div>
       <p><b>This tool is for educational purposes only.</b><br>
       It explains trading logic and risk management concepts.<br>
       It is <b>not financial advice</b>. Trading involves risk, and you should consult a qualified advisor before making investment decisions.</p>
-      <p class="small">Note: If INR OHLC isn’t available, the checker falls back to USD automatically.</p>
     </div>
 
     <!-- Inputs and Results -->
@@ -50,8 +50,9 @@
       <div class="section-title">Check a signal</div>
       <label for="ticker">Select crypto:</label>
       <select id="ticker">
-        <!-- Static list of 100 swing-friendly coins (CoinGecko IDs) -->
-        <option value="bitcoin" selected>BTC - Bitcoin</option>
+        <!-- Kaspa + 100 swing-friendly coins -->
+        <option value="kaspa" selected>KAS - Kaspa</option>
+        <option value="bitcoin">BTC - Bitcoin</option>
         <option value="ethereum">ETH - Ethereum</option>
         <option value="binancecoin">BNB - Binance Coin</option>
         <option value="ripple">XRP - Ripple</option>
@@ -70,8 +71,47 @@
         <option value="aptos">APT - Aptos</option>
         <option value="render-token">RNDR - Render</option>
         <option value="pepe">PEPE - Pepe</option>
-        <option value="kaspa">KAS - Kaspa</option>
-        <!-- ...continue until 100 coins -->
+        <option value="shiba-inu">SHIB - Shiba Inu</option>
+        <option value="arbitrum">ARB - Arbitrum</option>
+        <option value="optimism">OP - Optimism</option>
+        <option value="cosmos">ATOM - Cosmos</option>
+        <option value="algorand">ALGO - Algorand</option>
+        <option value="fantom">FTM - Fantom</option>
+        <option value="hedera">HBAR - Hedera</option>
+        <option value="vechain">VET - VeChain</option>
+        <option value="aave">AAVE - Aave</option>
+        <option value="maker">MKR - Maker</option>
+        <option value="compound-governance-token">COMP - Compound</option>
+        <option value="curve-dao-token">CRV - Curve DAO</option>
+        <option value="synthetix-network-token">SNX - Synthetix</option>
+        <option value="the-graph">GRT - The Graph</option>
+        <option value="thorchain">RUNE - THORChain</option>
+        <option value="celestia">TIA - Celestia</option>
+        <option value="worldcoin">WLD - Worldcoin</option>
+        <option value="sei-network">SEI - Sei</option>
+        <option value="immutable-x">IMX - Immutable</option>
+        <option value="gala">GALA - Gala</option>
+        <option value="flow">FLOW - Flow</option>
+        <option value="tezos">XTZ - Tezos</option>
+        <option value="multiversx">EGLD - MultiversX</option>
+        <option value="chiliz">CHZ - Chiliz</option>
+        <option value="axie-infinity">AXS - Axie Infinity</option>
+        <option value="sandbox">SAND - Sandbox</option>
+        <option value="decentraland">MANA - Decentraland</option>
+        <option value="enjincoin">ENJ - Enjin Coin</option>
+        <option value="illuvium">ILV - Illuvium</option>
+        <option value="mina-protocol">MINA - Mina</option>
+        <option value="oasis-network">ROSE - Oasis</option>
+        <option value="kava">KAVA - Kava</option>
+        <option value="waves">WAVES - Waves</option>
+        <option value="iotex">IOTX - IoTeX</option>
+        <option value="stacks">STX - Stacks</option>
+        <option value="eos">EOS - EOS</option>
+        <option value="dash">DASH - Dash</option>
+        <option value="zcash">ZEC - Zcash</option>
+        <option value="monero">XMR - Monero</option>
+        <option value="bitcoin-cash">BCH - Bitcoin Cash</option>
+        <!-- …continue until 100 -->
       </select>
 
       <label for="capital">Capital (₹):</label>
@@ -89,82 +129,4 @@
 
   <script>
     async function fetchOhlcReliable(ticker) {
-      const tryFetch = async (currency) => {
-        const url = `https://api.coingecko.com/api/v3/coins/${ticker}/ohlc?vs_currency=${currency}&days=90`;
-        const res = await fetch(url);
-        if (!res.ok) return { data: [], currency, ok: false };
-        const data = await res.json();
-        return { data: Array.isArray(data) ? data : [], currency, ok: true };
-      };
-      try {
-        let r = await tryFetch("inr");
-        if (!r.data.length) r = await tryFetch("usd");
-        return r;
-      } catch {
-        return { data: [], currency: "inr", ok: false };
-      }
-    }
-
-    async function fetchMarketInfo(ticker) {
-      const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(ticker)}`;
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      const arr = await res.json();
-      if (!Array.isArray(arr) || !arr.length) return null;
-      const c = arr[0];
-      return {
-        price: c.current_price,
-        marketCap: c.market_cap,
-        vol24h: c.total_volume,
-        ath: c.ath
-      };
-    }
-
-    function ema(closes, period) {
-      if (closes.length < period) return new Array(closes.length).fill(null);
-      const k = 2 / (period + 1);
-      const out = new Array(closes.length).fill(null);
-      let sum = 0;
-      for (let i = 0; i < period; i++) sum += closes[i];
-      out[period - 1] = sum / period;
-      for (let i = period; i < closes.length; i++) {
-        out[i] = closes[i] * k + out[i - 1] * (1 - k);
-      }
-      return out;
-    }
-
-    function computeRoC(closes, period=10) {
-      const roc = new Array(closes.length).fill(null);
-      for (let i = period; i < closes.length; i++) {
-        const prev = closes[i - period];
-        roc[i] = isFinite(prev) && prev !== 0 ? (closes[i] - prev) / prev : null;
-      }
-      return roc;
-    }
-
-    function computeAVWAPFromAnchor(closes, anchorIndex) {
-      const avwap = new Array(closes.length).fill(null);
-      let sum = 0, count = 0;
-      for (let i = anchorIndex; i < closes.length; i++) {
-        sum += closes[i]; count++;
-        avwap[i] = sum / count;
-      }
-      for (let i = 0; i < anchorIndex; i++) avwap[i] = avwap[anchorIndex];
-      return avwap;
-    }
-
-    function fmt(x) {
-      if (!isFinite(x)) return "-";
-      const abs = Math.abs(x);
-      if (abs >= 1000) return x.toFixed(2);
-      if (abs >= 1) return x.toFixed(4);
-      return x.toFixed(6);
-    }
-
-    function pct(a, b) {
-      if (!isFinite(a) || !isFinite(b) || b === 0) return null;
-      return ((a - b) / b) * 100;
-    }
-
-    async function checkSignal() {
-      const statusEl = document.getElementById("
+      const tryFetch =
