@@ -14,6 +14,8 @@
     button:hover { background:#1a242f; }
     #result { font-size:14px; line-height:1.6; margin-top:15px; }
     .section-title { font-size:18px; margin-bottom:10px; color:#2c3e50; }
+    .row { display:flex; gap:10px; align-items:center; margin-top:8px; }
+    .status { font-size:12px; color:#666; margin-top:8px; min-height:16px; }
   </style>
 </head>
 <body>
@@ -23,9 +25,9 @@
     <!-- Left column: Info panels -->
     <div class="card">
       <div id="about">
-        <div class="section-title">About This Strategy</div>
+        <div class="section-title">About this strategy</div>
         This tool identifies <b>institutional-style buy setups</b> by combining momentum reset and trend resumption.<br><br>
-        <b>Key Concepts:</b><br>
+        <b>Key concepts:</b><br>
         • <b>Institutional Buy Zone</b> → price resets but holds above fair value.<br>
         • <b>Momentum Reset (RoC negative)</b> → short-term weakness that shakes out retail traders.<br>
         • <b>Trend Resumption (Close > AVWAP)</b> → price reclaiming anchored VWAP, often used by institutions.<br>
@@ -37,26 +39,8 @@
         4. If either fails → FAIL ❌ (no setup).<br>
       </div>
 
-      <div id="glossary">
-        <div class="section-title">Glossary</div>
-        • <b>RoC (Rate of Change)</b> → Measures momentum by comparing today’s price to price N days ago.<br>
-        • <b>AVWAP (Anchored VWAP)</b> → Average price since a key swing high.<br>
-        • <b>Stop Loss</b> → Price level where you exit to limit losses.<br>
-        • <b>Target</b> → Price level where you take profit, usually set at 2× risk.<br>
-        • <b>Position Size</b> → Number of units you buy, based on risk % and capital.<br>
-      </div>
-
-      <div id="walkthrough">
-        <div class="section-title">Sample Walkthrough</div>
-        If you had ₹25,000 and risk 2%:<br>
-        • Risk capital = 25,000 × 0.02 = ₹500.<br>
-        • Suppose entry = ₹100 and stop loss = ₹95 → risk per unit = ₹5.<br>
-        • Position size = 500 ÷ 5 = 100 units.<br>
-        • Target = Entry + 2×Risk = 100 + 10 = ₹110.<br>
-      </div>
-
       <div id="disclaimer">
-        <div class="section-title">Risk Disclaimer</div>
+        <div class="section-title">Risk disclaimer</div>
         This tool is for <b>educational purposes only</b>. It explains trading logic and risk management concepts.<br>
         It is <b>not financial advice</b>. Trading involves risk, and you should consult a qualified advisor before making investment decisions.<br>
       </div>
@@ -64,34 +48,58 @@
 
     <!-- Right column: Inputs and Results -->
     <div class="card">
-      <div class="section-title">Check a Signal</div>
-      <label>Select Crypto:</label>
+      <div class="section-title">Check a signal</div>
+      <label>Select crypto:</label>
       <select id="ticker">
-        <!-- Explicit Kaspa option -->
+        <!-- Kaspa always present and preselected -->
         <option value="kaspa" selected>KAS - Kaspa</option>
       </select>
 
-      <label>Capital (₹):</label>
-      <input id="capital" type="number" value="25000">
+      <div class="row">
+        <label style="flex:1">Capital (₹):</label>
+        <input id="capital" type="number" value="25000" style="flex:1">
+      </div>
 
-      <label>Risk %:</label>
-      <input id="risk" type="number" value="2">
+      <div class="row">
+        <label style="flex:1">Risk %:</label>
+        <input id="risk" type="number" value="2" style="flex:1">
+      </div>
+
+      <div class="row">
+        <input type="checkbox" id="useDemo" checked>
+        <label for="useDemo" style="font-weight:normal">If API fails, use demo data</label>
+      </div>
 
       <button id="checkBtn">Check</button>
 
+      <div id="status" class="status"></div>
       <div id="result"></div>
     </div>
   </div>
 
   <script>
-    // Populate dropdown with top 50 coins; keep Kaspa, avoid duplicates
+    async function fetchWithTimeout(url, ms = 6000) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), ms);
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(id);
+        return res;
+      } catch (e) {
+        clearTimeout(id);
+        throw e;
+      }
+    }
+
     async function loadTopCoins() {
       const dropdown = document.getElementById("ticker");
-      const seen = new Set([dropdown.value]); // avoid duplicate kaspa
+      const seen = new Set([dropdown.value]);
+      const statusEl = document.getElementById("status");
 
       try {
+        statusEl.textContent = "Loading top coins…";
         const url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=inr&order=market_cap_desc&per_page=50&page=1";
-        const res = await fetch(url);
+        const res = await fetchWithTimeout(url, 7000);
         if (!res.ok) throw new Error("HTTP " + res.status);
         const coins = await res.json();
 
@@ -104,25 +112,62 @@
             seen.add(c.id);
           }
         });
+        statusEl.textContent = "";
       } catch (err) {
         console.warn("Top 50 load failed:", err);
+        const fallback = [
+          {id:"bitcoin", symbol:"BTC", name:"Bitcoin"},
+          {id:"ethereum", symbol:"ETH", name:"Ethereum"},
+          {id:"tether", symbol:"USDT", name:"Tether"},
+          {id:"binancecoin", symbol:"BNB", name:"BNB"},
+          {id:"ripple", symbol:"XRP", name:"XRP"}
+        ];
+        fallback.forEach(c => {
+          if (!seen.has(c.id)) {
+            const opt = document.createElement("option");
+            opt.value = c.id;
+            opt.textContent = c.symbol + " - " + c.name;
+            dropdown.appendChild(opt);
+            seen.add(c.id);
+          }
+        });
+        statusEl.textContent = "Loaded fallback list (API unavailable).";
       }
     }
 
-    // Try INR first; if empty, fall back to USD
     async function fetchOhlcReliable(ticker) {
       const tryFetch = async (currency) => {
         const url = `https://api.coingecko.com/api/v3/coins/${ticker}/ohlc?vs_currency=${currency}&days=30`;
-        const res = await fetch(url);
+        const res = await fetchWithTimeout(url, 7000);
         if (!res.ok) return [];
         const data = await res.json();
         return Array.isArray(data) ? data : [];
       };
-      let data = await tryFetch("inr");
-      if (!data || data.length === 0) {
-        data = await tryFetch("usd");
+      try {
+        let data = await tryFetch("inr");
+        if (!data || data.length === 0) {
+          data = await tryFetch("usd");
+        }
+        return data;
+      } catch (e) {
+        return [];
       }
-      return data;
+    }
+
+    function demoOhlc(base = 100, n = 30) {
+      const arr = [];
+      let price = base;
+      for (let i = 0; i < n; i++) {
+        const ts = Date.now() - (n - i) * 24 * 60 * 60 * 1000;
+        const change = (Math.sin(i/5) * 0.5 + (Math.random()-0.5) * 0.8);
+        const o = price;
+        const c = Math.max(1, price + change);
+        const h = Math.max(o, c) + Math.abs(change)*0.6;
+        const l = Math.min(o, c) - Math.abs(change)*0.6;
+        arr.push([ts, o, h, l, c]);
+        price = c;
+      }
+      return arr;
     }
 
     function computeAVWAP(closes) {
@@ -138,41 +183,4 @@
     }
 
     function computeRoC(closes, period=10) {
-      return closes.map((c,i) => i<period ? null : (c - closes[i-period])/closes[i-period]);
-    }
-
-    async function checkSignal() {
-      const resultEl = document.getElementById("result");
-      resultEl.innerHTML = "Calculating…";
-
-      const ticker = document.getElementById("ticker").value;
-      const capital = parseFloat(document.getElementById("capital").value);
-      const riskPct = parseFloat(document.getElementById("risk").value)/100;
-
-      const raw = await fetchOhlcReliable(ticker);
-      if (!raw || raw.length === 0) {
-        resultEl.innerHTML = `
-          <b>Ticker:</b> ${ticker.toUpperCase()}<br>
-          <b>Signal:</b> FAIL ❌<br><br>
-          <b>Explanation:</b><br>
-          - No OHLC data available in INR/USD for the past 30 days.<br>
-        `;
-        return;
-      }
-
-      const closes = raw.map(d => d[4]);
-      const lows   = raw.map(d => d[3]);
-      const latest = closes[closes.length-1];
-
-      // RoC
-      const rocPeriod = 10;
-      const roc = computeRoC(closes, rocPeriod);
-      const latestRoc = roc[roc.length-1];
-
-      // AVWAP
-      const avwap = computeAVWAP(closes);
-      const latestAvwap = avwap[avwap.length-1];
-
-      const hasRoc = latestRoc !== null && !isNaN(latestRoc);
-      const hasAvwap = latestAvwap !== null && !isNaN(latestAvwap);
-      const pass = hasR
+      return closes.map((c,i) => i<period
