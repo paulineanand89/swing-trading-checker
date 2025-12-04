@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
   <title>Swing Trading Signal Checker</title>
   <style>
     body { font-family: Arial; margin: 20px; }
     .panel { border: 1px solid #ccc; padding: 15px; margin-top: 20px; }
     label { display:block; margin-top:10px; }
+    #chart { height: 400px; }
+    #rocChart { height: 200px; margin-top: 20px; }
   </style>
 </head>
 <body>
@@ -33,6 +36,11 @@
   <button onclick="checkSignal()">Check</button>
 
   <div id="result" class="panel"></div>
+  <div id="chart" class="panel"></div>
+  <div id="rocChart" class="panel"></div>
+
+  <!-- Lightweight Charts library -->
+  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 
   <script>
     async function fetchData(ticker) {
@@ -52,12 +60,27 @@
         return;
       }
 
-      const closes = data.map(d => d[4]);
-      const lows = data.map(d => d[3]);
+      const candles = data.map(d => ({
+        time: Math.floor(d[0]/1000),
+        open: d[1],
+        high: d[2],
+        low: d[3],
+        close: d[4]
+      }));
+
+      const closes = candles.map(c => c.close);
+      const lows = candles.map(c => c.low);
       const latest = closes[closes.length-1];
 
       // RoC (10-day)
-      const prev = closes[closes.length-11];
+      const rocPeriod = 10;
+      const rocData = closes.map((c,i) => {
+        if (i < rocPeriod) return { time: candles[i].time, value: null };
+        const prev = closes[i-rocPeriod];
+        return { time: candles[i].time, value: (c - prev)/prev };
+      });
+
+      const prev = closes[closes.length-rocPeriod-1];
       const roc = (latest - prev) / prev;
 
       // Anchored VWAP proxy = average close from swing high
@@ -87,6 +110,30 @@
           <b>Position Size:</b> ${positionSize.toFixed(4)} units
         ` : "No trade setup"}
       `;
+
+      // Draw candlestick chart
+      document.getElementById("chart").innerHTML = "";
+      const chart = LightweightCharts.createChart(document.getElementById("chart"), { width: 600, height: 400 });
+      const candleSeries = chart.addCandlestickSeries();
+      candleSeries.setData(candles);
+
+      // Add AVWAP line
+      const avwapSeries = chart.addLineSeries({ color: 'blue', lineWidth: 2 });
+      const avwapData = candles.map((c,i) => ({
+        time: c.time,
+        value: i >= anchorIndex ? closes.slice(anchorIndex, i+1).reduce((s,x)=>s+x,0)/(i-anchorIndex+1) : null
+      }));
+      avwapSeries.setData(avwapData);
+
+      // Draw RoC chart
+      document.getElementById("rocChart").innerHTML = "";
+      const rocChart = LightweightCharts.createChart(document.getElementById("rocChart"), { width: 600, height: 200 });
+      const rocSeries = rocChart.addLineSeries({ color: 'orange', lineWidth: 2 });
+      rocSeries.setData(rocData);
+
+      // Zero line for RoC
+      const zeroSeries = rocChart.addLineSeries({ color: 'gray', lineWidth: 1 });
+      zeroSeries.setData(candles.map(c => ({ time: c.time, value: 0 })));
     }
   </script>
 </body>
