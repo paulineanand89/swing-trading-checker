@@ -3,29 +3,21 @@
 <head>
   <meta charset="utf-8">
   <title>Swing Trading Signal Checker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
   <style>
     body { font-family: Arial; margin: 20px; }
+    h1 { text-align: center; }
     .panel { border: 1px solid #ccc; padding: 15px; margin-top: 20px; }
     label { display:block; margin-top:10px; }
-    #chart { height: 400px; }
-    #rocChart { height: 200px; margin-top: 20px; }
+    canvas { margin-top: 20px; }
   </style>
 </head>
 <body>
   <h1>Swing Trading Strategy Checker</h1>
 
   <label>Select Crypto:</label>
-  <select id="ticker">
-    <option value="bitcoin">BTC</option>
-    <option value="ethereum">ETH</option>
-    <option value="ripple">XRP</option>
-    <option value="cardano">ADA</option>
-    <option value="shiba-inu">SHIB</option>
-    <option value="binancecoin">BNB</option>
-    <option value="xdce-crowd-sale">XDC</option>
-    <option value="hedera-hashgraph">HBAR</option>
-    <option value="kaspa">KAS</option>
-  </select>
+  <select id="ticker"></select>
 
   <label>Capital (₹):</label>
   <input id="capital" type="number" value="25000">
@@ -36,17 +28,48 @@
   <button onclick="checkSignal()">Check</button>
 
   <div id="result" class="panel"></div>
-  <div id="chart" class="panel"></div>
-  <div id="rocChart" class="panel"></div>
 
-  <!-- Lightweight Charts library -->
-  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+  <canvas id="candleChart" width="800" height="400"></canvas>
+  <canvas id="rocChart" width="800" height="200"></canvas>
 
   <script>
+    // Load top 50 coins dynamically
+    async function loadTopCoins() {
+      const url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=inr&order=market_cap_desc&per_page=50&page=1";
+      const res = await fetch(url);
+      const coins = await res.json();
+
+      const dropdown = document.getElementById("ticker");
+      dropdown.innerHTML = "";
+
+      coins.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c.id;   // CoinGecko ID
+        opt.textContent = c.symbol.toUpperCase() + " - " + c.name;
+        dropdown.appendChild(opt);
+      });
+    }
+
     async function fetchData(ticker) {
       const url = `https://api.coingecko.com/api/v3/coins/${ticker}/ohlc?vs_currency=inr&days=30`;
       const res = await fetch(url);
       return await res.json(); // [timestamp, open, high, low, close]
+    }
+
+    function computeAVWAP(closes) {
+      const highestClose = Math.max(...closes);
+      const anchorIndex = closes.lastIndexOf(highestClose);
+      const avwap = [];
+      for (let i=0; i<closes.length; i++) {
+        if (i < anchorIndex) { avwap.push(null); continue; }
+        const slice = closes.slice(anchorIndex, i+1);
+        avwap.push(slice.reduce((s,x)=>s+x,0)/slice.length);
+      }
+      return avwap;
+    }
+
+    function computeRoC(closes, period=10) {
+      return closes.map((c,i) => i<period ? null : (c - closes[i-period])/closes[i-period]);
     }
 
     async function checkSignal() {
@@ -54,42 +77,35 @@
       const capital = parseFloat(document.getElementById("capital").value);
       const riskPct = parseFloat(document.getElementById("risk").value)/100;
 
-      const data = await fetchData(ticker);
-      if (!data || data.length === 0) {
+      const raw = await fetchData(ticker);
+      if (!raw || raw.length === 0) {
         document.getElementById("result").innerHTML = "No data found.";
         return;
       }
 
-      const candles = data.map(d => ({
-        time: Math.floor(d[0]/1000),
-        open: d[1],
-        high: d[2],
-        low: d[3],
-        close: d[4]
+      const candles = raw.map(d => ({
+        t: new Date(d[0]),
+        o: d[1],
+        h: d[2],
+        l: d[3],
+        c: d[4]
       }));
 
-      const closes = candles.map(c => c.close);
-      const lows = candles.map(c => c.low);
+      const closes = candles.map(c => c.c);
+      const lows = candles.map(c => c.l);
       const latest = closes[closes.length-1];
 
-      // RoC (10-day)
+      // RoC
       const rocPeriod = 10;
-      const rocData = closes.map((c,i) => {
-        if (i < rocPeriod) return { time: candles[i].time, value: null };
-        const prev = closes[i-rocPeriod];
-        return { time: candles[i].time, value: (c - prev)/prev };
-      });
+      const roc = computeRoC(closes, rocPeriod);
+      const latestRoc = roc[roc.length-1];
 
-      const prev = closes[closes.length-rocPeriod-1];
-      const roc = (latest - prev) / prev;
-
-      // Anchored VWAP proxy = average close from swing high
-      const highestClose = Math.max(...closes);
-      const anchorIndex = closes.lastIndexOf(highestClose);
-      const avwap = closes.slice(anchorIndex).reduce((s,x)=>s+x,0) / (closes.length-anchorIndex);
+      // AVWAP
+      const avwap = computeAVWAP(closes);
+      const latestAvwap = avwap[avwap.length-1];
 
       // PASS/FAIL
-      const pass = roc < 0 ? (latest > avwap) : false;
+      const pass = latestRoc < 0 ? (latest > latestAvwap) : false;
 
       // SL, Target, Position
       const sl = Math.min(...lows);
@@ -97,44 +113,68 @@
       const target = latest + 2*riskPts;
       const positionSize = (capital*riskPct)/riskPts;
 
+      let explanation = "";
+      if (pass) {
+        explanation = `
+        <b>Explanation:</b><br>
+        - RoC(10d) was negative, showing momentum reset.<br>
+        - Price closed above AVWAP, confirming trend resumption.<br>
+        - Together, these conditions signal a valid swing entry.<br>
+        `;
+      } else {
+        explanation = `
+        <b>Explanation:</b><br>
+        - Either RoC(10d) was positive (no reset),<br>
+        - Or price failed to close above AVWAP.<br>
+        - Without both conditions, the swing setup is invalid.<br>
+        `;
+      }
+
       document.getElementById("result").innerHTML = `
         <b>Ticker:</b> ${ticker.toUpperCase()}<br>
         <b>Latest Close:</b> ₹${latest}<br>
-        <b>RoC(10d):</b> ${(roc*100).toFixed(2)}%<br>
-        <b>AVWAP:</b> ₹${avwap.toFixed(2)}<br>
+        <b>RoC(10d):</b> ${(latestRoc*100).toFixed(2)}%<br>
+        <b>AVWAP:</b> ₹${latestAvwap.toFixed(2)}<br>
         <b>Signal:</b> ${pass ? "PASS ✅" : "FAIL ❌"}<br><br>
         ${pass ? `
           <b>Entry:</b> ₹${latest}<br>
           <b>Stop Loss:</b> ₹${sl}<br>
           <b>Target:</b> ₹${target}<br>
-          <b>Position Size:</b> ${positionSize.toFixed(4)} units
-        ` : "No trade setup"}
+          <b>Position Size:</b> ${positionSize.toFixed(4)} units<br><br>
+        ` : ""}
+        ${explanation}
       `;
 
-      // Draw candlestick chart
-      document.getElementById("chart").innerHTML = "";
-      const chart = LightweightCharts.createChart(document.getElementById("chart"), { width: 600, height: 400 });
-      const candleSeries = chart.addCandlestickSeries();
-      candleSeries.setData(candles);
-
-      // Add AVWAP line
-      const avwapSeries = chart.addLineSeries({ color: 'blue', lineWidth: 2 });
-      const avwapData = candles.map((c,i) => ({
-        time: c.time,
-        value: i >= anchorIndex ? closes.slice(anchorIndex, i+1).reduce((s,x)=>s+x,0)/(i-anchorIndex+1) : null
-      }));
-      avwapSeries.setData(avwapData);
+      // Draw candlestick + AVWAP
+      const ctx1 = document.getElementById("candleChart").getContext("2d");
+      if (window.candleChartObj) window.candleChartObj.destroy();
+      window.candleChartObj = new Chart(ctx1, {
+        type: 'candlestick',
+        data: {
+          datasets: [
+            { label: 'Candles', data: candles },
+            { label: 'AVWAP', type: 'line', data: candles.map((c,i)=>({x:c.t,y:avwap[i]})), borderColor:'blue', fill:false }
+          ]
+        }
+      });
 
       // Draw RoC chart
-      document.getElementById("rocChart").innerHTML = "";
-      const rocChart = LightweightCharts.createChart(document.getElementById("rocChart"), { width: 600, height: 200 });
-      const rocSeries = rocChart.addLineSeries({ color: 'orange', lineWidth: 2 });
-      rocSeries.setData(rocData);
-
-      // Zero line for RoC
-      const zeroSeries = rocChart.addLineSeries({ color: 'gray', lineWidth: 1 });
-      zeroSeries.setData(candles.map(c => ({ time: c.time, value: 0 })));
+      const ctx2 = document.getElementById("rocChart").getContext("2d");
+      if (window.rocChartObj) window.rocChartObj.destroy();
+      window.rocChartObj = new Chart(ctx2, {
+        type: 'line',
+        data: {
+          labels: candles.map(c=>c.t),
+          datasets: [
+            { label: 'RoC(10d)', data: roc, borderColor:'orange', fill:false },
+            { label: 'Zero', data: roc.map(()=>0), borderColor:'gray', borderDash:[5,5], fill:false }
+          ]
+        }
+      });
     }
+
+    // Load dropdown on page start
+    loadTopCoins();
   </script>
 </body>
 </html>
