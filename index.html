@@ -10,9 +10,20 @@
 <body>
   <h1>Swing Trading Strategy Checker</h1>
 
-  <label>Enter Ticker:</label>
-  <input id="ticker" type="text" value="bitcoin">
+  <label>Select Crypto:</label>
+  <select id="ticker">
+    <option value="bitcoin">BTC</option>
+    <option value="ethereum">ETH</option>
+    <option value="ripple">XRP</option>
+    <option value="cardano">ADA</option>
+    <option value="shiba-inu">SHIB</option>
+    <option value="binancecoin">BNB</option>
+    <option value="xdce-crowd-sale">XDC</option>
+    <option value="hedera-hashgraph">HBAR</option>
+    <option value="kaspa">KAS</option>
+  </select>
   <br><br>
+
   <label>Capital (₹):</label>
   <input id="capital" type="number" value="25000">
   <br><br>
@@ -24,19 +35,10 @@
   <div id="result" class="panel"></div>
 
   <script>
-    async function fetchCrypto(ticker) {
+    async function fetchData(ticker) {
       const url = `https://api.coingecko.com/api/v3/coins/${ticker}/ohlc?vs_currency=inr&days=30`;
       const res = await fetch(url);
       return await res.json(); // [timestamp, open, high, low, close]
-    }
-
-    async function fetchStock(ticker) {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1mo`;
-      const res = await fetch(url);
-      const json = await res.json();
-      const quotes = json.chart.result[0].indicators.quote[0];
-      const timestamps = json.chart.result[0].timestamp;
-      return timestamps.map((t,i)=>[t*1000, quotes.open[i], quotes.high[i], quotes.low[i], quotes.close[i]]);
     }
 
     async function checkSignal() {
@@ -44,13 +46,7 @@
       const capital = parseFloat(document.getElementById("capital").value);
       const riskPct = parseFloat(document.getElementById("risk").value)/100;
 
-      let data;
-      if (ticker.toLowerCase().includes("bitcoin") || ticker.toLowerCase().includes("eth")) {
-        data = await fetchCrypto(ticker);
-      } else {
-        data = await fetchStock(ticker);
-      }
-
+      const data = await fetchData(ticker);
       if (!data || data.length === 0) {
         document.getElementById("result").innerHTML = "No data found.";
         return;
